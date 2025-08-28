@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Geo Duels</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        body {
+            font-family: 'Orbitron', sans-serif;
+            touch-action: none;
+            overscroll-behavior: none;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+        }
+        canvas {
+            background-color: #162447;
+            border: 2px solid #1f4068;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(27, 94, 155, 0.5);
+        }
+        .joystick-base {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .joystick-stick {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .fire-button {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: rgba(239, 68, 68, 0.4);
+            border: 2px solid rgba(239, 68, 68, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            text-shadow: 0 0 5px black;
+            user-select: none; /* Prevent text selection on tap */
+        }
+        .ultimate-button {
+            background: rgba(250, 204, 21, 0.4);
+            border: 2px solid rgba(250, 204, 21, 0.6);
+        }
+        .ultimate-ready {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 10px 20px rgba(250, 204, 21, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+        }
+        .health-bar-bg {
+            background-color: #4b5563;
+        }
+        .health-bar-fill {
+            background-color: #4ade80;
+            transition: width 0.3s ease-in-out;
+        }
+        .ultimate-bar-fill {
+            background-color: #facc15;
+            transition: width 0.3s ease-in-out;
+        }
+        .modal {
+            background-color: rgba(26, 26, 46, 0.9);
+        }
+        .character-card svg {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="w-full h-screen overflow-hidden flex flex-col items-center justify-center p-2">
+
+    <!-- Phase 1: Basic UI Framework -->
+    <div id="game-ui" class="w-full max-w-4xl mx-auto flex flex-col items-center hidden">
+        <!-- Player Stats -->
+        <div class="w-full flex justify-between items-center mb-2 px-2">
+            <!-- Player 1 Stats -->
+            <div class="w-2/5">
+                <h2 class="text-lg text-cyan-300">P1: <span id="p1-name"></span></h2>
+                <div class="w-full h-4 rounded-full health-bar-bg overflow-hidden border-2 border-gray-600">
+                    <div id="p1-health" class="h-full rounded-full health-bar-fill"></div>
+                </div>
+                <div class="w-full h-3 mt-1 rounded-full health-bar-bg overflow-hidden border-2 border-gray-600">
+                    <div id="p1-ultimate" class="h-full rounded-full ultimate-bar-fill"></div>
+                </div>
+            </div>
+            <div id="timer" class="text-3xl font-bold text-white">60</div>
+            <!-- Player 2 Stats -->
+            <div class="w-2/5">
+                <h2 class="text-lg text-right text-red-400">P2: <span id="p2-name"></span></h2>
+                <div class="w-full h-4 rounded-full health-bar-bg overflow-hidden border-2 border-gray-600">
+                    <div id="p2-health" class="h-full rounded-full health-bar-fill"></div>
+                </div>
+                 <div class="w-full h-3 mt-1 rounded-full health-bar-bg overflow-hidden border-2 border-gray-600">
+                    <div id="p2-ultimate" class="h-full rounded-full ultimate-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Phase 4: Game Arena -->
+        <canvas id="gameCanvas" class="rounded-lg"></canvas>
+    </div>
+
+    <!-- Phase 2: Character Selection (Expanded) -->
+    <div id="character-select" class="w-full max-w-lg p-6 rounded-lg modal flex flex-col items-center">
+        <h1 class="text-3xl mb-6 text-yellow-300">Choose Your Fighter</h1>
+        <div class="grid grid-cols-3 gap-4 w-full">
+            <!-- Square -->
+            <div class="character-card bg-slate-700 p-4 rounded-lg text-center cursor-pointer border-2 border-transparent hover:border-cyan-400" data-char="Square">
+                <svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#38bdf8"/></svg>
+                <h3 class="mt-2 text-xl">Square</h3>
+                <p class="text-xs text-gray-400">Ultimate: Titan Shield</p>
+            </div>
+            <!-- Circle -->
+            <div class="character-card bg-slate-700 p-4 rounded-lg text-center cursor-pointer border-2 border-transparent hover:border-red-400" data-char="Circle">
+                <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#f87171"/></svg>
+                <h3 class="mt-2 text-xl">Circle</h3>
+                <p class="text-xs text-gray-400">Ultimate: Rapid Fire</p>
+            </div>
+            <!-- Triangle -->
+            <div class="character-card bg-slate-700 p-4 rounded-lg text-center cursor-pointer border-2 border-transparent hover:border-green-400" data-char="Triangle">
+                <svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 0 L64 64 L0 64 Z" fill="#4ade80"/></svg>
+                <h3 class="mt-2 text-xl">Triangle</h3>
+                <p class="text-xs text-gray-400">Ultimate: Tri-Beam</p>
+            </div>
+            <!-- Star -->
+            <div class="character-card bg-slate-700 p-4 rounded-lg text-center cursor-pointer border-2 border-transparent hover:border-yellow-400" data-char="Star">
+                <svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 0 L42 24 L64 24 L48 40 L54 64 L32 50 L10 64 L16 40 L0 24 L22 24 Z" fill="#facc15"/></svg>
+                <h3 class="mt-2 text-xl">Star</h3>
+                <p class="text-xs text-gray-400">Ultimate: Nova Burst</p>
+            </div>
+            <!-- Diamond -->
+            <div class="character-card bg-slate-700 p-4 rounded-lg text-center cursor-pointer border-2 border-transparent hover:border-purple-400" data-char="Diamond">
+                 <svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 0 L64 32 L32 64 L0 32 Z" fill="#a78bfa"/></svg>
+                <h3 class="mt-2 text-xl">Diamond</h3>
+                <p class="text-xs text-gray-400">Ultimate: Reflect Barrier</p>
+            </div>
+            <!-- Hexagon -->
+            <div class="character-card bg-slate-700 p-4 rounded-lg text-center cursor-pointer border-2 border-transparent hover:border-orange-400" data-char="Hexagon">
+                <svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 0 L64 16 L64 48 L32 64 L0 48 L0 16 Z" fill="#f97316"/></svg>
+                <h3 class="mt-2 text-xl">Hexagon</h3>
+                <p class="text-xs text-gray-400">Ultimate: Shockwave</p>
+            </div>
+        </div>
+        <p id="selection-status" class="mt-4 text-lg">Player 1: Choose</p>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over" class="w-full max-w-md p-8 rounded-lg modal flex-col items-center hidden">
+        <h1 id="winner-text" class="text-4xl mb-6 text-yellow-300"></h1>
+        <button id="play-again" class="px-8 py-3 bg-green-500 text-white rounded-lg text-xl hover:bg-green-600">Play Again</button>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="controls" class="hidden">
+        <div id="p1-joystick" class="joystick-base" style="bottom: 20px; left: 20px;">
+            <div id="p1-stick" class="joystick-stick" style="top: 50%; left: 50%;"></div>
+        </div>
+        <div id="p1-fire" class="fire-button" style="bottom: 140px; left: 20px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0a1 1 0 0 1 1 1v5.268a2 2 0 0 0 1.695 1.972.5.5 0 1 1-.39 1.944 3 3 0 0 1-2.6-2.98V1a1 1 0 0 1 1-1z"/><path d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0z"/></svg>
+        </div>
+        <div id="p1-ultimate-btn" class="fire-button ultimate-button" style="bottom: 20px; left: 140px;">ULT</div>
+
+        <div id="p2-joystick" class="joystick-base" style="bottom: 20px; right: 20px;">
+            <div id="p2-stick" class="joystick-stick" style="top: 50%; left: 50%;"></div>
+        </div>
+        <div id="p2-fire" class="fire-button" style="bottom: 140px; right: 20px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0a1 1 0 0 1 1 1v5.268a2 2 0 0 0 1.695 1.972.5.5 0 1 1-.39 1.944 3 3 0 0 1-2.6-2.98V1a1 1 0 0 1 1-1z"/><path d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0z"/></svg>
+        </div>
+        <div id="p2-ultimate-btn" class="fire-button ultimate-button" style="bottom: 20px; right: 140px;">ULT</div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Phase 1: Game State Management ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const gameUI = document.getElementById('game-ui');
+    const characterSelectUI = document.getElementById('character-select');
+    const gameOverUI = document.getElementById('game-over');
+    const controlsUI = document.getElementById('controls');
+    const selectionStatus = document.getElementById('selection-status');
+    
+    let players = [];
+    let projectiles = [];
+    let particles = [];
+    let gameTimer = 60;
+    let timerInterval;
+    let gameState = 'character-select'; // character-select, playing, game-over
+    let player1Char, player2Char;
+
+    const synth = new Tone.Synth().toDestination();
+    const hitSynth = new Tone.MembraneSynth().toDestination();
+
+    // --- Phase 2: Character System (Expanded) ---
+    const CHARACTER_SPECS = {
+        'Square':   { name: 'Square',   color: '#38bdf8', size: 30, speed: 3,   health: 120, ultimateChargeRate: 20, ultimate: 'shield' },
+        'Circle':   { name: 'Circle',   color: '#f87171', size: 30, speed: 4,   health: 100, ultimateChargeRate: 25, ultimate: 'rapid_fire' },
+        'Triangle': { name: 'Triangle', color: '#4ade80', size: 30, speed: 5,   health: 90,  ultimateChargeRate: 30, ultimate: 'tri_beam' },
+        'Star':     { name: 'Star',     color: '#facc15', size: 35, speed: 3.5, health: 100, ultimateChargeRate: 25, ultimate: 'nova_burst' },
+        'Diamond':  { name: 'Diamond',  color: '#a78bfa', size: 30, speed: 3,   health: 110, ultimateChargeRate: 20, ultimate: 'reflect_barrier' },
+        'Hexagon':  { name: 'Hexagon',  color: '#f97316', size: 35, speed: 2.5, health: 130, ultimateChargeRate: 15, ultimate: 'shockwave' }
+    };
+
+    class Player {
+        constructor(x, y, spec, isPlayer1) {
+            this.x = x;
+            this.y = y;
+            this.spec = spec;
+            this.width = spec.size;
+            this.height = spec.size;
+            this.speed = spec.speed;
+            this.health = spec.health;
+            this.maxHealth = spec.health;
+            this.ultimate = 0;
+            this.maxUltimate = 100;
+            this.isPlayer1 = isPlayer1;
+            this.velocity = { x: 0, y: 0 };
+            this.shootCooldown = 0;
+            this.isShielded = false;
+            this.rapidFireActive = false;
+            this.isBeaming = false;
+            this.hasReflectBarrier = false;
+        }
+
+        draw() {
+            ctx.fillStyle = this.spec.color;
+            ctx.strokeStyle = this.spec.color;
+            ctx.lineWidth = 3;
+
+            // Ultimate Visual Effects
+            if (this.isShielded) {
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.width * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            if (this.rapidFireActive) {
+                ctx.shadowColor = '#facc15';
+                ctx.shadowBlur = 20;
+            }
+             if (this.hasReflectBarrier) {
+                ctx.strokeStyle = '#a78bfa';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.width, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            if (this.isBeaming) {
+                const otherPlayer = players.find(p => p !== this);
+                const angle = Math.atan2(otherPlayer.y - this.y, otherPlayer.x - this.x);
+                ctx.strokeStyle = this.spec.color;
+                ctx.lineWidth = 15;
+                ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + Math.cos(angle) * canvas.width, this.y + Math.sin(angle) * canvas.height);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Draw shapes
+            ctx.fillStyle = this.spec.color;
+            ctx.beginPath();
+            switch (this.spec.name) {
+                case 'Square':
+                    ctx.rect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+                    break;
+                case 'Circle':
+                    ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+                    break;
+                case 'Triangle':
+                    ctx.moveTo(this.x, this.y - this.height / 2);
+                    ctx.lineTo(this.x - this.width / 2, this.y + this.height / 2);
+                    ctx.lineTo(this.x + this.width / 2, this.y + this.height / 2);
+                    ctx.closePath();
+                    break;
+                case 'Star':
+                    this.drawStar(this.x, this.y, 5, this.width / 2, this.width / 4);
+                    break;
+                case 'Diamond':
+                    ctx.moveTo(this.x, this.y - this.height / 2);
+                    ctx.lineTo(this.x + this.width / 2, this.y);
+                    ctx.lineTo(this.x, this.y + this.height / 2);
+                    ctx.lineTo(this.x - this.width / 2, this.y);
+                    ctx.closePath();
+                    break;
+                case 'Hexagon':
+                    this.drawPolygon(this.x, this.y, 6, this.width / 2);
+                    break;
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        
+        drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.moveTo(cx, cy - outerRadius)
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y)
+                rot += step
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y)
+                rot += step
+            }
+            ctx.lineTo(cx, cy - outerRadius)
+            ctx.closePath();
+        }
+
+        drawPolygon(cx, cy, sides, radius) {
+            const angle = (Math.PI * 2) / sides;
+            ctx.moveTo(cx + radius * Math.cos(0), cy + radius * Math.sin(0));
+            for (let i = 1; i <= sides; i++) {
+                ctx.lineTo(cx + radius * Math.cos(angle * i), cy + radius * Math.sin(angle * i));
+            }
+        }
+
+
+        update() {
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+
+            // Boundary checks
+            this.x = Math.max(this.width / 2, Math.min(canvas.width - this.width / 2, this.x));
+            this.y = Math.max(this.height / 2, Math.min(canvas.height - this.height / 2, this.y));
+
+            if (this.shootCooldown > 0) {
+                this.shootCooldown--;
+            }
+            
+            // Handle ongoing ultimates
+            if (this.isBeaming) {
+                const otherPlayer = players.find(p => p !== this);
+                otherPlayer.takeDamage(0.5, this); // Beam damage
+                updateUI();
+            }
+
+            this.draw();
+        }
+
+        shoot() {
+            if (this.shootCooldown === 0) {
+                const speed = 8;
+                const otherPlayer = players.find(p => p !== this);
+                const angle = Math.atan2(otherPlayer.y - this.y, otherPlayer.x - this.x);
+                
+                projectiles.push(new Projectile(this.x, this.y, 5, this.spec.color, {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                }, this));
+                
+                this.shootCooldown = this.rapidFireActive ? 5 : 20;
+                playSound('shoot');
+            }
+        }
+        
+        activateUltimate() {
+            if (this.ultimate < this.maxUltimate) return;
+            
+            this.ultimate = 0;
+            playSound('ultimate');
+            
+            switch (this.spec.ultimate) {
+                case 'shield':
+                    this.isShielded = true;
+                    setTimeout(() => { this.isShielded = false; }, 5000);
+                    break;
+                case 'rapid_fire':
+                    this.rapidFireActive = true;
+                    setTimeout(() => { this.rapidFireActive = false; }, 3000);
+                    break;
+                case 'tri_beam':
+                    this.isBeaming = true;
+                    setTimeout(() => { this.isBeaming = false; }, 2000);
+                    break;
+                case 'nova_burst':
+                    for (let i = 0; i < 12; i++) {
+                        const angle = (i / 12) * Math.PI * 2;
+                        projectiles.push(new Projectile(this.x, this.y, 6, this.spec.color, {
+                            x: Math.cos(angle) * 6,
+                            y: Math.sin(angle) * 6
+                        }, this));
+                    }
+                    break;
+                case 'reflect_barrier':
+                    this.hasReflectBarrier = true;
+                    setTimeout(() => { this.hasReflectBarrier = false; }, 6000);
+                    break;
+                case 'shockwave':
+                    createParticles(this.x, this.y, this.spec.color, 50);
+                    const otherPlayer = players.find(p => p !== this);
+                    const dist = Math.hypot(this.x - otherPlayer.x, this.y - otherPlayer.y);
+                    if (dist < 150) {
+                        otherPlayer.takeDamage(20, this);
+                        const angle = Math.atan2(otherPlayer.y - this.y, otherPlayer.x - this.x);
+                        otherPlayer.velocity.x = Math.cos(angle) * 10;
+                        otherPlayer.velocity.y = Math.sin(angle) * 10;
+                        setTimeout(() => {
+                           if(otherPlayer) {
+                               otherPlayer.velocity.x = 0;
+                               otherPlayer.velocity.y = 0;
+                           }
+                        }, 300);
+                    }
+                    break;
+            }
+        }
+
+        takeDamage(damage, attacker) {
+            if (this.isShielded) return;
+            this.health -= damage;
+            if (attacker && attacker !== this) {
+                 attacker.ultimate = Math.min(this.maxUltimate, attacker.ultimate + this.spec.ultimateChargeRate);
+            }
+            createParticles(this.x, this.y, this.spec.color, 15);
+            playSound('hit');
+            if (this.health <= 0) {
+                this.health = 0;
+                endGame();
+            }
+        }
+    }
+
+    class Projectile {
+        constructor(x, y, radius, color, velocity, owner) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.color = color;
+            this.velocity = velocity;
+            this.owner = owner;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        }
+
+        update() {
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.draw();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, radius, color, velocity) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.color = color;
+            this.velocity = velocity;
+            this.alpha = 1;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        update() {
+            this.velocity.x *= 0.99;
+            this.velocity.y *= 0.99;
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.alpha -= 0.02;
+            this.draw();
+        }
+    }
+
+    function createParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            particles.push(new Particle(x, y, Math.random() * 3, color, {
+                x: (Math.random() - 0.5) * (Math.random() * 6),
+                y: (Math.random() - 0.5) * (Math.random() * 6)
+            }));
+        }
+    }
+
+    function init() {
+        // Set canvas size based on container
+        const container = canvas.parentElement;
+        const size = Math.min(container.clientWidth, window.innerHeight * 0.7);
+        canvas.width = size;
+        canvas.height = size * 0.75; // 4:3 aspect ratio
+
+        players = [];
+        projectiles = [];
+        particles = [];
+        gameTimer = 60;
+        
+        players.push(new Player(canvas.width * 0.2, canvas.height / 2, CHARACTER_SPECS[player1Char], true));
+        players.push(new Player(canvas.width * 0.8, canvas.height / 2, CHARACTER_SPECS[player2Char], false));
+
+        document.getElementById('p1-name').textContent = player1Char;
+        document.getElementById('p2-name').textContent = player2Char;
+        
+        updateUI();
+        
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            gameTimer--;
+            document.getElementById('timer').textContent = gameTimer;
+            if (gameTimer <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+    
+    // --- Phase 3: Game Engine Core ---
+    function animate() {
+        if (gameState !== 'playing') return;
+        requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        players.forEach(player => player.update());
+
+        particles.forEach((particle, index) => {
+            if (particle.alpha <= 0) {
+                particles.splice(index, 1);
+            } else {
+                particle.update();
+            }
+        });
+
+        projectiles.forEach((projectile, pIndex) => {
+            projectile.update();
+
+            // Collision with players
+            players.forEach(player => {
+                if (player !== projectile.owner) {
+                    const dist = Math.hypot(projectile.x - player.x, projectile.y - player.y);
+                    if (dist - projectile.radius - player.width / 2 < 1) {
+                        if (player.hasReflectBarrier) {
+                            // Reflect projectile
+                            projectile.owner = player;
+                            projectile.velocity.x *= -1;
+                            projectile.velocity.y *= -1;
+                            playSound('hit'); // Or a special reflect sound
+                        } else {
+                            player.takeDamage(10, projectile.owner);
+                            projectiles.splice(pIndex, 1);
+                            updateUI();
+                        }
+                    }
+                }
+            });
+
+            // Remove off-screen projectiles
+            if (projectile.x < 0 || projectile.x > canvas.width || projectile.y < 0 || projectile.y > canvas.height) {
+                projectiles.splice(pIndex, 1);
+            }
+        });
+    }
+
+    function updateUI() {
+        if (players.length < 2) return;
+        document.getElementById('p1-health').style.width = `${(players[0].health / players[0].maxHealth) * 100}%`;
+        document.getElementById('p1-ultimate').style.width = `${(players[0].ultimate / players[0].maxUltimate) * 100}%`;
+        document.getElementById('p2-health').style.width = `${(players[1].health / players[1].maxHealth) * 100}%`;
+        document.getElementById('p2-ultimate').style.width = `${(players[1].ultimate / players[1].maxUltimate) * 100}%`;
+        
+        const p1UltBtn = document.getElementById('p1-ultimate-btn');
+        if (players[0].ultimate >= players[0].maxUltimate) {
+            p1UltBtn.classList.add('ultimate-ready');
+        } else {
+            p1UltBtn.classList.remove('ultimate-ready');
+        }
+        
+        const p2UltBtn = document.getElementById('p2-ultimate-btn');
+        if (players[1].ultimate >= players[1].maxUltimate) {
+            p2UltBtn.classList.add('ultimate-ready');
+        } else {
+            p2UltBtn.classList.remove('ultimate-ready');
+        }
+    }
+
+    function startGame() {
+        gameState = 'playing';
+        characterSelectUI.classList.add('hidden');
+        gameOverUI.classList.add('hidden');
+        gameUI.classList.remove('hidden');
+        controlsUI.classList.remove('hidden');
+        init();
+        animate();
+    }
+
+    function endGame() {
+        gameState = 'game-over';
+        clearInterval(timerInterval);
+        controlsUI.classList.add('hidden');
+        
+        let winnerText;
+        if (players.length < 2) {
+             winnerText = "Game Over";
+        } else if (players[0].health > players[1].health) {
+            winnerText = "Player 1 Wins!";
+        } else if (players[1].health > players[0].health) {
+            winnerText = "Player 2 Wins!";
+        } else {
+            winnerText = "It's a Draw!";
+        }
+        document.getElementById('winner-text').textContent = winnerText;
+        gameOverUI.style.display = 'flex'; // Use flex to re-enable
+        gameOverUI.classList.remove('hidden');
+    }
+
+    // --- Phase 3: Touch Controls (Multi-touch Fix) ---
+    function setupJoystick(baseEl, stickEl, player) {
+        let touchId = null;
+        let baseRect = baseEl.getBoundingClientRect();
+        let center = { x: baseRect.left + baseRect.width / 2, y: baseRect.top + baseRect.height / 2 };
+        const maxDist = baseRect.width / 2;
+
+        const resetStick = () => {
+            touchId = null;
+            player.velocity.x = 0;
+            player.velocity.y = 0;
+            stickEl.style.left = '50%';
+            stickEl.style.top = '50%';
+        };
+
+        const handleTouchStart = (e) => {
+            if (touchId !== null) return; // Already tracking a touch for this joystick
+            for (const touch of e.changedTouches) {
+                if (touch.clientX >= baseRect.left && touch.clientX <= baseRect.right &&
+                    touch.clientY >= baseRect.top && touch.clientY <= baseRect.bottom) {
+                    touchId = touch.identifier;
+                    break; 
+                }
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (touchId === null) return;
+            let touch = null;
+            for (const t of e.touches) { // Use e.touches to track anywhere on screen
+                if (t.identifier === touchId) {
+                    touch = t;
+                    break;
+                }
+            }
+            if (!touch) return;
+
+            const dX = touch.clientX - center.x;
+            const dY = touch.clientY - center.y;
+            const dist = Math.min(maxDist, Math.hypot(dX, dY));
+            const angle = Math.atan2(dY, dX);
+
+            player.velocity.x = Math.cos(angle) * player.speed * (dist / maxDist);
+            player.velocity.y = Math.sin(angle) * player.speed * (dist / maxDist);
+
+            stickEl.style.left = `${maxDist + Math.cos(angle) * dist}px`;
+            stickEl.style.top = `${maxDist + Math.sin(angle) * dist}px`;
+        };
+
+        const handleTouchEnd = (e) => {
+            if (touchId === null) return;
+            for (const touch of e.changedTouches) {
+                if (touch.identifier === touchId) {
+                    resetStick();
+                    break;
+                }
+            }
+        };
+        
+        baseEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+        // Listen globally for move and end to track finger anywhere
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+        window.addEventListener('resize', () => {
+             baseRect = baseEl.getBoundingClientRect();
+             center = { x: baseRect.left + baseRect.width / 2, y: baseRect.top + baseRect.height / 2 };
+        });
+    }
+    
+    // --- Phase 6: Sound Effects ---
+    function playSound(type) {
+        if (type === 'shoot') {
+            synth.triggerAttackRelease("C5", "8n");
+        } else if (type === 'hit') {
+            hitSynth.triggerAttackRelease("C3", "8n");
+        } else if (type === 'ultimate') {
+            synth.triggerAttackRelease("G5", "4n");
+        }
+    }
+
+    // Event Listeners
+    document.querySelectorAll('.character-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const char = card.dataset.char;
+            if (!player1Char) {
+                player1Char = char;
+                selectionStatus.textContent = 'Player 2: Choose';
+                card.classList.add('border-cyan-400');
+                card.style.pointerEvents = 'none';
+            } else if (!player2Char) {
+                player2Char = char;
+                card.classList.add('border-red-400');
+                setTimeout(startGame, 500);
+            }
+        });
+    });
+
+    document.getElementById('play-again').addEventListener('click', () => {
+        player1Char = null;
+        player2Char = null;
+        gameState = 'character-select';
+        selectionStatus.textContent = 'Player 1: Choose';
+        document.querySelectorAll('.character-card').forEach(card => {
+            card.classList.remove('border-cyan-400', 'border-red-400');
+            card.style.pointerEvents = 'auto';
+        });
+        gameOverUI.classList.add('hidden');
+        gameUI.classList.add('hidden');
+        characterSelectUI.classList.remove('hidden');
+    });
+
+    // Wait for players array to be populated before setting up controls
+    const setupControlsInterval = setInterval(() => {
+        if (players.length === 2) {
+            clearInterval(setupControlsInterval);
+            setupJoystick(document.getElementById('p1-joystick'), document.getElementById('p1-stick'), players[0]);
+            setupJoystick(document.getElementById('p2-joystick'), document.getElementById('p2-stick'), players[1]);
+            
+            document.getElementById('p1-fire').addEventListener('touchstart', (e) => { e.preventDefault(); players[0].shoot(); });
+            document.getElementById('p2-fire').addEventListener('touchstart', (e) => { e.preventDefault(); players[1].shoot(); });
+            
+            document.getElementById('p1-ultimate-btn').addEventListener('touchstart', (e) => { e.preventDefault(); players[0].activateUltimate(); });
+            document.getElementById('p2-ultimate-btn').addEventListener('touchstart', (e) => { e.preventDefault(); players[1].activateUltimate(); });
+        }
+    }, 100);
+});
+</script>
+</body>
+</html>
