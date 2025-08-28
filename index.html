@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade de Minijuegos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Encabezado */
+        .header {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid #334155;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .header h1 {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            margin: 0;
+            background: linear-gradient(90deg, #60a5fa, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: clamp(1rem, 4vw, 1.25rem);
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            max-width: 600px;
+        }
+
+        /* Sección de juegos */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            width: 100%;
+        }
+
+        .game-card {
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        /* Efecto hover en las tarjetas */
+        .game-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            border-color: #60a5fa;
+        }
+
+        .game-card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #a78bfa;
+        }
+
+        .game-card h2 {
+            font-size: 1.5rem;
+            color: #f8fafc;
+            margin: 0 0 0.5rem 0;
+            font-weight: 700;
+        }
+
+        .game-card p {
+            font-size: 1rem;
+            color: #cbd5e1;
+            margin-bottom: 1.5rem;
+            flex-grow: 1; /* Para que todos los párrafos tengan la misma altura */
+        }
+
+        .play-button {
+            background-image: linear-gradient(45deg, #60a5fa, #8b5cf6);
+            color: #ffffff;
+            font-weight: bold;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 9999px;
+            text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Efecto hover en el botón */
+        .play-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .play-button:active {
+            transform: scale(0.98);
+        }
+
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Media queries para responsividad */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding-bottom: 1.5rem;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Arcade de MiniJuegos</h1>
+            <p>Una colección de minijuegos divertidos y sencillos.</p>
+        </header>
+
+        <section class="games-grid">
+            <!-- Tarjeta para el Juego 1 -->
+            <div class="game-card">
+                <span class="game-card-icon">🟥</span>
+                <h2>Geometry wars</h2>
+                <p>Un emocionante juego arcade multijugador.</p>
+                <a href="geometry.html" class="play-button">¡Jugar ahora!</a>
+            </div>
+
+            <!-- Tarjeta para el Juego 2 -->
+            <div class="game-card">
+                <span class="game-card-icon">🧠</span>
+                <h2>Memory</h2>
+                <p>Pon a prueba tu memoria encontrando las parejas de cartas iguales.</p>
+                <!-- Asegúrate de reemplazar "juego2.html" con el nombre real de tu archivo -->
+                <a href="juego2.html" class="play-button">¡Jugar ahora!</a>
+            </div>
+
+            <!-- Puedes añadir más tarjetas de juego aquí siguiendo el mismo patrón -->
+
+            <!-- Tarjeta de ejemplo para un juego futuro -->
+            <div class="game-card">
+                <span class="game-card-icon">🕹️</span>
+                <h2>Nuevo Juego</h2>
+                <p>¡Pronto un nuevo desafío!</p>
+                <a href="#" class="play-button disabled" onclick="return false;">Próximamente</a>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
